@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Space Portal — Interaktif Planet & Satelit (Full)</title>
+  <style>
+    /* --- Reset & base --- */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:#000;color:#eaf2ff}
+    :root{--glass:rgba(255,255,255,0.04);--accent:#7fd3ff;--muted:rgba(255,255,255,0.65)}
+
+    /* --- Background: deep space image + stars overlay --- */
+    body{
+      background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(30,10,50,0.35), transparent 8%),
+        radial-gradient(ellipse at 80% 80%, rgba(5,20,60,0.45), transparent 18%),
+        url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=1920&auto=format&fit=crop&ixlib=rb-4.0.3&s=5a0a0f8f1a8c4a0f2b2c7b3e9c9d9e56');
+      background-size:cover;background-blend-mode:overlay;
+      -webkit-font-smoothing:antialiased;
+    }
+    .stars-overlay{position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(#fff 0.6px, transparent 0.6px);background-size:24px 24px;opacity:.06;filter:blur(1px);z-index:0}
+
+    /* --- Splash (enter) --- */
+    #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1200;background:linear-gradient(180deg,rgba(0,0,12,0.6),rgba(0,0,0,0.2))}
+    .splash-card{display:flex;gap:18px;align-items:center;padding:26px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.008));backdrop-filter:blur(6px);box-shadow:0 20px 80px rgba(0,0,0,0.6)}
+    .splash-logo{width:84px;height:84px;border-radius:12px;display:grid;place-items:center;background:conic-gradient(from 120deg,#083a66,#0b607a)}
+    .enter-btn{background:linear-gradient(180deg,var(--accent),#4fb8ff);border:none;padding:10px 16px;border-radius:10px;font-weight:800;color:#002;cursor:pointer}
+
+    /* --- Header & menu --- */
+    header{position:fixed;left:18px;top:18px;z-index:100;display:flex;gap:12px;align-items:center}
+    .hamburger{width:56px;height:56px;border-radius:12px;background:var(--glass);display:grid;place-items:center;cursor:pointer;border:1px solid rgba(255,255,255,0.04)}
+    .hamburger div{width:28px;height:2px;background:#eaf2ff;margin:3px 0}
+
+    nav.side{position:fixed;left:18px;top:86px;z-index:100;display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:12px;background:linear-gradient(180deg,rgba(2,6,18,0.65),rgba(2,6,18,0.35));backdrop-filter:blur(6px)}
+    nav.side a{display:block;padding:8px 12px;border-radius:10px;text-decoration:none;color:inherit;font-weight:700;font-size:14px}
+    nav.side a:hover{background:rgba(255,255,255,0.02)}
+
+    /* --- Main layout --- */
+    main{position:relative;z-index:10;padding:28px 120px 80px 120px;min-height:100vh}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.006));border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 40px rgba(0,0,0,0.6)}
+
+    h2{font-size:20px;margin-bottom:6px}
+    p{color:var(--muted);margin-bottom:8px}
+
+    /* --- Canvas (space scene) --- */
+    #spaceCanvas{width:100%;height:520px;border-radius:14px;display:block;background:transparent}
+
+    /* --- Planet thumbs --- */
+    .planets{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+    .planet{width:120px;height:120px;border-radius:999px;display:grid;place-items:center;position:relative;cursor:pointer;box-shadow:0 12px 40px rgba(0,0,0,.6);overflow:hidden;border:1px solid rgba(255,255,255,0.03);transition:transform .22s}
+    .planet:hover{transform:scale(1.06)}
+    .planet .label{position:absolute;bottom:8px;font-weight:800;font-size:13px;background:linear-gradient(90deg,rgba(0,0,0,0.2),transparent);padding:4px 8px;border-radius:999px}
+
+    /* --- Scanner area --- */
+    .scanner{display:flex;gap:12px;align-items:center}
+    .scan-area{width:360px;height:200px;border-radius:10px;position:relative;overflow:hidden}
+    .radar{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.02), transparent 18%), linear-gradient(180deg, rgba(0,0,0,0.18), transparent);display:grid;place-items:center}
+    .sweep{width:160%;height:160%;position:absolute;left:-30%;top:-30%;background:conic-gradient(from 90deg, rgba(127,211,255,0.12), transparent 40%);transform-origin:50% 50%;animation:spin 3.6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* --- Modal for planet details --- */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.85));z-index:1100;padding:28px}
+    .modal.open{display:flex}
+    .modal-card{width:100%;max-width:1100px;background:linear-gradient(180deg,rgba(8,12,30,0.99),rgba(2,6,18,0.99));border-radius:14px;padding:18px;color:#e8f6ff}
+    .modal-body{display:flex;gap:18px;flex-wrap:wrap}
+    .planet-visual{flex:0 0 420px;height:420px;border-radius:12px;overflow:hidden;background:#061428;display:grid;place-items:center}
+    .planet-visual img{width:100%;height:100%;object-fit:cover;transform-origin:center center;transition:transform .32s}
+    .modal-info{flex:1;min-width:260px}
+
+    /* --- Articles grid --- */
+    .articles-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+
+    /* --- videos grid --- */
+    .videos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:12px}
+
+    footer{position:fixed;right:18px;bottom:18px;z-index:30;color:rgba(255,255,255,0.6);font-size:13px}
+
+    @media(max-width:980px){
+      main{padding:18px}
+      nav.side{display:none}
+      #spaceCanvas{height:320px}
+      .planet-visual{flex-basis:100%;height:320px}
+    }
+  </style>
+</head>
+<body>
+  <div class="stars-overlay" aria-hidden></div>
+
+  <!-- Splash -->
+  <div id="splash" role="dialog" aria-modal="true">
+    <div class="splash-card" role="presentation">
+      <div class="splash-logo" aria-hidden>
+        <svg viewBox="0 0 100 100" width="56" height="56"><circle cx="50" cy="50" r="44" fill="#06243e" stroke="#9fd6ff" stroke-width="1"/><path d="M8 74 C44 16,56 16,92 74" fill="none" stroke="#9fd6ff" stroke-width="3" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <h2>SPACE PORTAL</h2>
+        <div style="opacity:.9">Jelajah interaktif — planet, satelit, artikel NASA, video edukasi, dan scanner visual.</div>
+      </div>
+      <div style="margin-left:12px"><button class="enter-btn" id="enterSite">Masuk</button></div>
+    </div>
+  </div>
+
+  <!-- Header + Hamburger -->
+  <header>
+    <div class="hamburger" id="hamburger" title="Menu" aria-label="Buka menu" role="button" tabindex="0">
+      <div></div><div></div><div></div>
+    </div>
+  </header>
+
+  <!-- Side nav (hidden by default) -->
+  <nav class="side" id="sideNav" style="display:none" aria-hidden="true">
+    <a href="#home" data-route="home">Beranda</a>
+    <a href="#planets" data-route="planets">Planet & Scanner</a>
+    <a href="#articles" data-route="articles">Artikel</a>
+    <a href="#nasa" data-route="nasa">NASA Gallery</a>
+    <a href="#videos" data-route="videos">Video Education</a>
+    <a href="#starlink" data-route="starlink">Beli Starlink</a>
+    <a href="#game" data-route="game">Game</a>
+  </nav>
+
+  <main>
+    <!-- HOME -->
+    <section id="page-home" class="card page active">
+      <h2>Beranda — Interaktif Luar Angkasa</h2>
+      <p>Selamat datang! Klik planet untuk melihat detail: sejarah penemuan, gambar, dan zoom. Gunakan fitur Scan untuk melihat gambar dari NASA.</p>
+      <canvas id="spaceCanvas" aria-label="Kanvas luar angkasa interaktif"></canvas>
+
+      <div style="margin-top:12px" class="card">
+        <h3>Planet Populer</h3>
+        <div class="planets" id="planetList"></div>
+      </div>
+    </section>
+
+    <!-- PLANETS & SCANNER -->
+    <section id="page-planets" class="card page" style="display:none">
+      <h2>Planet & Scanner Visual</h2>
+      <p>Gunakan scanner untuk mencari citra objek di NASA. Hasil menampilkan gambar & deskripsi singkat.</p>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+        <div class="scan-area card">
+          <div class="radar">
+            <div class="sweep" aria-hidden></div>
+            <div style="position:relative;z-index:2;text-align:center">
+              <strong>Scanner Visual</strong>
+              <div style="opacity:.9;margin-top:6px">Ketik nama objek lalu tekan Scan</div>
+              <div style="margin-top:8px;display:flex;gap:8px"><input id="scanQuery" placeholder="e.g. Mars, Jupiter, Hubble" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit" /><button id="doScan" class="enter-btn" style="padding:8px 10px">Scan</button></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:280px" class="card">
+          <h4>Hasil Scan</h4>
+          <div id="scanResult">Tekan Scan untuk menampilkan gambar terkait dari NASA Image Library untuk mencari informasi dari nasa harus mengetik menggunakan bahasa inggris.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" class="card">
+        <h3>Semua Planet</h3>
+        <div class="planets" id="allPlanets"></div>
+      </div>
+    </section>
+
+    <!-- ARTICLES -->
+    <section id="page-articles" class="card page" style="display:none">
+      <h2>Artikel — Sinkron dari NASA</h2>
+      <p>Tekan tombol di bawah untuk mengambil artikel terbaru dari NASA (hingga 30 item). Jika gagal, kemungkinan karena CORS — jalankan dari server lokal.</p>
+      <div style="margin-top:8px"><button id="loadNasaArticles" class="enter-btn">Muat Artikel NASA (30)</button></div>
+      <div class="articles-grid" id="articlesGrid"></div>
+    </section>
+
+    <!-- NASA GALLERY -->
+    <section id="page-nasa" class="card page" style="display:none">
+      <h2>NASA Image Library & APOD</h2>
+      <p>Masukkan kata kunci lalu cari — hasil diambil dari NASA Image and Video Library (image).</p>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="nasaQ" placeholder="e.g. moon, hubble, mars, apollo" style="flex:1;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04)" />
+        <button id="searchNasa" class="enter-btn">Cari</button>
+      </div>
+      <div id="nasaOut" style="margin-top:12px" class="articles-grid"></div>
+    </section>
+
+    <!-- VIDEOS -->
+    <section id="page-videos" class="card page" style="display:none">
+      <h2>Video Pendidikan & Live</h2>
+      <p>Beberapa embed YouTube dari channel resmi NASA dan kanal sains populer..</p>
+      <div class="videos-grid">
+        <div class="card">
+          <h4>NASA Live (Channel)</h4>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:28px;margin-top:20px;">
+    
+    <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+      <iframe src="https://www.youtube.com/embed/aoNHhTyaxJg" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+    </div>
+
+    <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+      <iframe src="https://www.youtube.com/embed/uj3Lq7Gu94Y" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+    </div>
+
+    <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+      <iframe src="https://www.youtube.com/embed/WeA7edXsU40" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+    </div>
+
+    <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+      <iframe src="https://www.youtube.com/embed/Wfoy_OvNDvw" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+    </div>
+
+    <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+      <iframe src="https://www.youtube.com/embed/22-Ji8_kDwg" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+      
+      <div style="display:flex;flex-direction:column;align-items:center;gap:28px;margin-top:20px;">
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/NtrVwX1ncqk" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/irbigpycU8w" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/xRVHylmxUk8" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/_fRSaLAEW2s" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+    
+    <div style="display:flex;flex-direction:column;align-items:center;gap:28px;margin-top:20px;">
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/iTHUUjTA-LI" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/LUwnLFKfuBE" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/2k-N3CD31H8" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/DhmdyQdu96M" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/_fRSaLAEW2s" frameborder="0" allowfullscreen style="position:absolute;inset=0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/iTHUUjTA-LI" frameborder="0" allowfullscreen style="position:absolute;inset=0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+</div>
+  </div>
+
+</div>
+    </div>
+        </div>
+        <div class="card">
+            
+          <h4>Mark Rober / Science (Example)</h4>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:28px;margin-top:20px;">
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/6KcV1C1Ui5s" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/DTvS9lvRxZ8" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/qr1AvisQcV8" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/6KcV1C1Ui5s" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/pR5VJo5ifdE" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/M7-h3FO-KKo" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/SGP6Y0Pnhe4" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/M0_U1FHwACk" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+  <div style="position:relative;width:70%;max-width:720px;padding-top:39.4%;border-radius:12px;overflow:hidden;box-shadow:0 0 25px rgba(0,0,0,.8)">
+    <iframe src="https://www.youtube.com/embed/LEZCxxKp0hM" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:12px;"></iframe>
+  </div>
+
+</div>
+      
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STARLINK -->
+    <section id="page-starlink" class="card page" style="display:none">
+      <h2>Beli Starlink</h2>
+      <p>Untuk membeli atau cek ketersediaan, buka situs resmi Starlink (Starlink.com)</p>
+      <div style="margin-top:8px"><button id="openStarlink" class="enter-btn">Buka Starlink.com</button></div>
+    </section>
+
+    <!-- GAME -->
+    <section id="page-game" class="card page" style="display:none">
+      <h2>Game: Jelajah Orbit (Demo)</h2>
+      <p>Game ringan — gunakan tombol panah untuk bergerak. Klik \"Mulai\" untuk memulai.</p>
+      <div style="margin-top:8px" class="card">
+        <canvas id="gameCanvas" style="width:100%;height:320px;border-radius:8px;background:#02021a"></canvas>
+        <div style="display:flex;gap:8px;margin-top:8px"><button id="startGame" class="enter-btn">Mulai</button><div id="scoreDisplay" style="align-self:center">Skor: 0</div></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal planet -->
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3 id="modalTitle">Planet</h3>
+        <div style="display:flex;gap:8px">
+          <button id="zoomPlanet" class="enter-btn" style="padding:8px 12px">Zoom</button>
+          <button id="openArticlePlanet" class="enter-btn" style="padding:8px 12px">Baca Artikel</button>
+          <button id="closeModal" style="padding:8px 10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)">Tutup</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="planet-visual"><img id="planetImg" src="" alt="planet visual" /></div>
+        <div class="modal-info">
+          <h4 id="planetSubtitle"></h4>
+          <p id="planetDesc"></p>
+          <div id="planetExtra"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Space Portal — interaktif. Beberapa fitur memakai API publik NASA.</footer>
+
+  <script>
+    /* ===========================
+       Router & menu immediate open
+       =========================== */
+    const pages = ['home','planets','articles','nasa','videos','starlink','game'];
+    function showPage(route){
+      pages.forEach(p=>{
+        const el = document.getElementById('page-'+p);
+        if(el) el.style.display = (p === route) ? 'block' : 'none';
+      });
+      // update hash
+      location.hash = route;
+    }
+    document.querySelectorAll('nav.side a').forEach(a=>{
+      a.addEventListener('click', e => { e.preventDefault(); const r = a.dataset.route; showPage(r); if(window.innerWidth < 980) document.getElementById('sideNav').style.display='none'; });
+    });
+
+    // hamburger instant toggle
+    const hamburger = document.getElementById('hamburger');
+    const sideNav = document.getElementById('sideNav');
+    hamburger.addEventListener('click', ()=>{
+      const cur = sideNav.style.display;
+      sideNav.style.display = (!cur || cur === 'none') ? 'flex' : 'none';
+      sideNav.setAttribute('aria-hidden', sideNav.style.display === 'none');
+    });
+
+    // splash enter
+    document.getElementById('enterSite').addEventListener('click', ()=>{
+      document.getElementById('splash').style.display = 'none';
+    });
+
+    // Set initial page from hash or default 'home'
+    const initial = (location.hash && location.hash.replace('#','')) || 'home';
+    if(pages.includes(initial)) showPage(initial); else showPage('home');
+
+    /* ===========================
+       Planet data + rendering thumbs
+       =========================== */
+    const PLANETS = [
+      {id:'mercury', name:'Mercury', desc:'Planet terdekat ke Matahari. Permukaan berbatu dan penuh kawah.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/mercury.jpg'},
+      {id:'venus', name:'Venus', desc:'Punya atmosfer tebal dan efek rumah kaca ekstrem.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/venus-immersive.jpg'},
+      {id:'earth', name:'Bumi', desc:'Rumah kita, satu-satunya yang diketahui mendukung kehidupan.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/edu_what_is_earth.jpg'},
+      {id:'mars', name:'Mars', desc:'Planet merah, target eksplorasi robotik dan kemungkinan kolonisasi.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/pia21723-main.jpg'},
+      {id:'jupiter', name:'Jupiter', desc:'Raksasa gas terbesar, dengan banyak bulan dan badai besar.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/pia22946-16.jpg'},
+      {id:'saturn', name:'Saturnus', desc:'Dikenal karena cincinnya yang indah.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/pia20017.jpg'},
+      {id:'uranus', name:'Uranus', desc:'Planet es dengan inklinasi unik.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/uranus.png'},
+      {id:'neptune', name:'Neptunus', desc:'Planet es terluar dalam tata surya utama.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/neptune_1.jpg'}
+    ];
+
+    function createPlanetThumb(p){
+      const el = document.createElement('div');
+      el.className = 'planet';
+      el.style.backgroundImage = `url(${p.img})`;
+      el.style.backgroundSize = 'cover';
+      el.innerHTML = `<div class="label">${p.name}</div>`;
+      el.addEventListener('click', ()=> openPlanetModal(p));
+      return el;
+    }
+
+    function renderPlanetThumbs(){
+      const popular = document.getElementById('planetList');
+      const all = document.getElementById('allPlanets');
+      if(popular) popular.innerHTML='';
+      if(all) all.innerHTML='';
+      // take first 6 for popular
+      PLANETS.slice(0,6).forEach(p=>{
+        if(popular) popular.appendChild(createPlanetThumb(p));
+      });
+      PLANETS.forEach(p=>{
+        if(all) all.appendChild(createPlanetThumb(p));
+      });
+    }
+    renderPlanetThumbs();
+
+    /* ===========================
+       Planet modal + zoom + article link
+       =========================== */
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const planetImg = document.getElementById('planetImg');
+    const planetDesc = document.getElementById('planetDesc');
+    const planetSubtitle = document.getElementById('planetSubtitle');
+    const planetExtra = document.getElementById('planetExtra');
+    let currentPlanet = null;
+    let zoomed = false;
+
+    function openPlanetModal(p){
+      currentPlanet = p;
+      modalTitle.innerText = p.name;
+      planetImg.src = p.img;
+      planetDesc.innerText = p.desc;
+      planetSubtitle.innerText = 'Sejarah singkat & fakta';
+      planetExtra.innerHTML = `<div style="opacity:.85;margin-top:8px"><strong>Diameter (approx):</strong> — data ringkas<br/><strong>Jarak dari Matahari:</strong> — lihat NASA</div>`;
+      modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+      // ensure zoom reset
+      planetImg.style.transform = 'scale(1)';
+      zoomed = false;
+    }
+
+    document.getElementById('closeModal').addEventListener('click', ()=>{
+      modal.classList.remove('open'); modal.setAttribute('aria-hidden','true');
+      planetImg.style.transform = 'scale(1)'; zoomed = false;
+    });
+
+    document.getElementById('zoomPlanet').addEventListener('click', ()=>{
+      zoomed = !zoomed;
+      planetImg.style.transform = zoomed ? 'scale(1.9)' : 'scale(1)';
+    });
+
+    document.getElementById('openArticlePlanet').addEventListener('click', ()=>{
+      if(!currentPlanet) return;
+      // open NASA search for the planet
+      const q = encodeURIComponent(currentPlanet.name);
+      window.open(`https://www.nasa.gov/search?q=${q}`, '_blank');
+    });
+
+    /* ===========================
+       Scanner: visual search using NASA Image API
+       =========================== */
+    async function doVisualScan(query){
+      const out = document.getElementById('scanResult');
+      if(!query || query.trim().length === 0){ out.innerHTML = 'Masukkan kata kunci dulu (mis. Mars)'; return; }
+      out.innerHTML = '<div>Memindai (mengambil gambar dari NASA Image Library)...</div>';
+      try{
+        const api = `https://images-api.nasa.gov/search?q=${encodeURIComponent(query)}&media_type=image`;
+        const res = await fetch(api);
+        const data = await res.json();
+        const items = (data.collection && data.collection.items) ? data.collection.items.slice(0,8) : [];
+        if(items.length === 0){ out.innerHTML = 'Tidak ditemukan hasil.'; return; }
+        out.innerHTML = '';
+        items.forEach(it => {
+          const d = it.data && it.data[0] ? it.data[0] : {};
+          const link = it.links && it.links[0] ? it.links[0].href : '';
+          const node = document.createElement('div');
+          node.style.marginBottom = '12px';
+          node.innerHTML = `<strong style="display:block">${d.title||'Untitled'}</strong>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-top:6px">
+              <img src="${link}" alt="${d.title||''}" style="width:160px;height:100px;object-fit:cover;border-radius:8px"/>
+              <div style="opacity:.9">${(d.description||'').slice(0,260)}...<div style="margin-top:6px"><a href="${link}" target="_blank">Lihat gambar</a> · <a href="https://www.nasa.gov/search?q=${encodeURIComponent(d.title||query)}" target="_blank">Cari artikel</a></div></div>
+            </div>`;
+          out.appendChild(node);
+        });
+      }catch(err){
+        console.warn(err);
+        out.innerHTML = 'Gagal melakukan scan visual. Jika membuka file secara langsung (file://), coba jalankan melalui server lokal atau periksa koneksi.';
+      }
+    }
+
+    document.getElementById('doScan').addEventListener('click', ()=>{
+      const q = document.getElementById('scanQuery').value || '';
+      doVisualScan(q || 'planet');
+    });
+
+    /* ===========================
+       Load real NASA articles (RSS) - up to 30
+       =========================== */
+    async function loadNasaArticles(){
+      const grid = document.getElementById('articlesGrid');
+      grid.innerHTML = 'Mengambil artikel NASA (RSS)...';
+      try{
+        // Using NASA Breaking News RSS — can adjust to other feeds as desired
+        const feedUrl = 'https://www.nasa.gov/rss/dyn/breaking_news.rss';
+        const res = await fetch(feedUrl);
+        const txt = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(txt, 'application/xml');
+        const items = Array.from(xml.querySelectorAll('item')).slice(0,30);
+        grid.innerHTML = '';
+        items.forEach(it=>{
+          const title = it.querySelector('title') ? it.querySelector('title').textContent : 'Untitled';
+          const desc = it.querySelector('description') ? it.querySelector('description').textContent : '';
+          const link = it.querySelector('link') ? it.querySelector('link').textContent : '';
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.style.padding = '10px';
+          card.innerHTML = `<h4 style="margin-bottom:6px">${title}</h4><p style="opacity:.9">${desc.slice(0,260)}...</p><div style="margin-top:8px"><a href="${link}" target="_blank">Baca selengkapnya di NASA</a></div>`;
+          grid.appendChild(card);
+        });
+      }catch(e){
+        console.warn(e);
+        grid.innerHTML = 'Gagal memuat artikel NASA. Jika buka sebagai file lokal, coba jalankan melalui server (masalah CORS mungkin terjadi).';
+      }
+    }
+    document.getElementById('loadNasaArticles').addEventListener('click', loadNasaArticles);
+
+    /* ===========================
+       NASA Image search for gallery
+       =========================== */
+    document.getElementById('searchNasa').addEventListener('click', async ()=>{
+      const q = document.getElementById('nasaQ').value || 'space';
+      const out = document.getElementById('nasaOut');
+      out.innerHTML = 'Mencari gambar...';
+      try{
+        const res = await fetch(`https://images-api.nasa.gov/search?q=${encodeURIComponent(q)}&media_type=image`);
+        const data = await res.json();
+        const items = (data.collection && data.collection.items) ? data.collection.items.slice(0,12) : [];
+        out.innerHTML = '';
+        items.forEach(it=>{
+          const d = it.data && it.data[0] ? it.data[0] : {};
+          const link = it.links && it.links[0] ? it.links[0].href : '';
+          const node = document.createElement('div');
+          node.className = 'card';
+          node.innerHTML = `<img src="${link}" alt="${d.title||''}" style="width:100%;height:160px;object-fit:cover;border-radius:8px"/><h4 style="margin-top:8px">${d.title||''}</h4><p style="opacity:.85">${(d.description||'').slice(0,120)}...</p><div style="margin-top:6px"><button onclick="window.open('${link}','_blank')" class="enter-btn" style="padding:6px 10px">Lihat</button></div>`;
+          out.appendChild(node);
+        });
+      }catch(err){
+        console.warn(err);
+        out.innerHTML = 'Gagal memuat hasil. Cek koneksi atau coba jalankan dari server.';
+      }
+    });
+
+    /* ===========================
+       Space canvas decorative (satellites + orbits)
+       =========================== */
+    const spaceCanvas = document.getElementById('spaceCanvas');
+    const ctx = spaceCanvas.getContext('2d');
+    function fitCanvas(){
+      spaceCanvas.width = spaceCanvas.clientWidth * devicePixelRatio;
+      spaceCanvas.height = spaceCanvas.clientHeight * devicePixelRatio;
+      ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    }
+    window.addEventListener('resize', fitCanvas);
+    fitCanvas();
+
+    // decorative orbiting objects
+    const deco = [
+      {r:70,a:0,s:0.0014,rad:10,color:'#9fd'},
+      {r:140,a:1.2,s:0.0008,rad:8,color:'#fdb'},
+      {r:230,a:2.1,s:0.0005,rad:12,color:'#aff'}
+    ];
+
+    function drawSpace(){
+      ctx.clearRect(0,0,spaceCanvas.clientWidth,spaceCanvas.clientHeight);
+      const w = spaceCanvas.clientWidth, h = spaceCanvas.clientHeight;
+      const cx = w/2, cy = h/2 - 30;
+      // central glow
+      const g = ctx.createRadialGradient(cx,cy,10,cx,cy,320);
+      g.addColorStop(0,'rgba(127,211,255,0.04)');
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+
+      // decorative orbits
+      deco.forEach(d=>{
+        d.a += d.s;
+        const x = cx + Math.cos(d.a) * d.r;
+        const y = cy + Math.sin(d.a) * d.r;
+        // orbit line
+        ctx.beginPath(); ctx.arc(cx,cy,d.r,0,Math.PI*2); ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1; ctx.stroke();
+        // body
+        ctx.beginPath(); ctx.fillStyle = d.color; ctx.arc(x,y,d.rad,0,Math.PI*2); ctx.fill();
+      });
+
+      requestAnimationFrame(drawSpace);
+    }
+    drawSpace();
+
+    /* ===========================
+       Game: simple avoider (canvas)
+       =========================== */
+    const gCanvas = document.getElementById('gameCanvas');
+    const gc = gCanvas.getContext('2d');
+    function fitGame(){ gCanvas.width = gCanvas.clientWidth * devicePixelRatio; gCanvas.height = gCanvas.clientHeight * devicePixelRatio; gc.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+    window.addEventListener('resize', fitGame); fitGame();
+    let player={x:80,y:240,w:28,h:28}, asteroids=[], score=0, running=false;
+    function startGame(){
+      asteroids=[]; score=0; running=true; player.x = gCanvas.clientWidth/2 - player.w/2; spawn(); loopGame();
+    }
+    document.getElementById('startGame').addEventListener('click', ()=> startGame());
+    function spawn(){ if(!running) return; asteroids.push({x:Math.random()*gCanvas.clientWidth, y:-30, r:8+Math.random()*22, vy:1.2+Math.random()*2}); setTimeout(spawn,700); }
+    document.addEventListener('keydown', e=>{ if(e.key==='ArrowLeft') player.x -= 36; if(e.key==='ArrowRight') player.x += 36; });
+    function loopGame(){
+      if(!running) return;
+      gc.clearRect(0,0,gCanvas.clientWidth,gCanvas.clientHeight);
+      gc.fillStyle='#03102a'; gc.fillRect(0,0,gCanvas.clientWidth,gCanvas.clientHeight);
+      gc.fillStyle='#7fd3ff'; gc.fillRect(player.x,player.y,player.w,player.h);
+      for(let i=asteroids.length-1;i>=0;i--){ const a=asteroids[i]; a.y += a.vy; gc.beginPath(); gc.arc(a.x,a.y,a.r,0,Math.PI*2); gc.fillStyle='#ffb3d6'; gc.fill(); if(a.y > gCanvas.clientHeight + 40){ asteroids.splice(i,1); score += 5 } const dx = Math.max(player.x, Math.min(a.x, player.x+player.w)); const dy = Math.max(player.y, Math.min(a.y, player.y+player.h)); if(Math.hypot(dx-a.x, dy-a.y) < a.r){ running=false; alert('Game over! Skor: '+score); } }
+      document.getElementById('scoreDisplay').innerText = 'Skor: '+score;
+      if(running) requestAnimationFrame(loopGame);
+    }
+
+    /* ===========================
+       Starlink button
+       =========================== */
+    document.getElementById('openStarlink').addEventListener('click', ()=> window.open('https://starlink.com','_blank'));
+
+    /* ===========================
+       Load NASA APOD as background preview (non-blocking)
+       =========================== */
+    (async function loadAPOD(){
+      try{
+        const apod = await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY').then(r=>r.json());
+        if(apod && apod.media_type === 'image' && apod.url){
+          // subtle background replace (non-blocking)
+          document.body.style.backgroundImage = `radial-gradient(ellipse at 20% 20%, rgba(30,10,50,0.35), transparent 8%), radial-gradient(ellipse at 80% 80%, rgba(5,20,60,0.45), transparent 18%), url('${apod.url}')`;
+        }
+      }catch(e){ /* ignore */ }
+    })();
+
+    /* ===========================
+       Helper: copy-safe (enable selection) and final notes
+       =========================== */
+    document.addEventListener('DOMContentLoaded', ()=>{ document.body.style.userSelect = 'auto'; });
+
+    /* ===========================
+       End of script
+       =========================== */
+  </script>
+</body>
+</html>
