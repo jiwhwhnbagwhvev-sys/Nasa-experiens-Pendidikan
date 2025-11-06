@@ -391,15 +391,16 @@
        Planet data + rendering thumbs
        =========================== */
     const PLANETS = [
-      {id:'mercury', name:'Mercury', desc:'Planet terdekat ke Matahari. Permukaan berbatu dan penuh kawah.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/mercury.jpg'},
-      {id:'venus', name:'Venus', desc:'Punya atmosfer tebal dan efek rumah kaca ekstrem.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/venus-immersive.jpg'},
-      {id:'earth', name:'Bumi', desc:'Rumah kita, satu-satunya yang diketahui mendukung kehidupan.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/edu_what_is_earth.jpg'},
-      {id:'mars', name:'Mars', desc:'Planet merah, target eksplorasi robotik dan kemungkinan kolonisasi.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/pia21723-main.jpg'},
-      {id:'jupiter', name:'Jupiter', desc:'Raksasa gas terbesar, dengan banyak bulan dan badai besar.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/pia22946-16.jpg'},
-      {id:'saturn', name:'Saturnus', desc:'Dikenal karena cincinnya yang indah.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/pia20017.jpg'},
-      {id:'uranus', name:'Uranus', desc:'Planet es dengan inklinasi unik.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/uranus.png'},
-      {id:'neptune', name:'Neptunus', desc:'Planet es terluar dalam tata surya utama.', img:'https://www.nasa.gov/sites/default/files/thumbnails/image/neptune_1.jpg'}
-    ];
+  {id:'mercury', name:'Mercury', r:80, size:6, color:'#c9c9c9', img:'https://solarsystem.nasa.gov/system/feature_items/images/18_mercury_new.png'},
+  {id:'venus', name:'Venus', r:120, size:10, color:'#e7c07e', img:'https://solarsystem.nasa.gov/system/feature_items/images/27_venus_jg.png'},
+  {id:'earth', name:'Bumi', r:0, size:14, color:'#67b7ff', img:'https://solarsystem.nasa.gov/system/feature_items/images/17_earth.png', moons:[{name:'Moon'}]},
+  {id:'mars', name:'Mars', r:160, size:8, color:'#d36b4c', img:'https://solarsystem.nasa.gov/system/feature_items/images/19_mars.png'},
+  {id:'jupiter', name:'Jupiter', r:220, size:20, color:'#d9b48b', img:'https://solarsystem.nasa.gov/system/feature_items/images/16_jupiter_new.png'},
+  {id:'saturn', name:'Saturnus', r:300, size:18, color:'#e9d3a3', img:'https://solarsystem.nasa.gov/system/feature_items/images/28_saturn.png'},
+  {id:'uranus', name:'Uranus', r:360, size:12, color:'#9fe6f7', img:'https://solarsystem.nasa.gov/system/feature_items/images/32_uranus.png'},
+  {id:'neptune', name:'Neptunus', r:420, size:12, color:'#4d78ff', img:'https://solarsystem.nasa.gov/system/feature_items/images/33_neptune.png'}
+  ];
+
 
     function createPlanetThumb(p){
       const el = document.createElement('div');
